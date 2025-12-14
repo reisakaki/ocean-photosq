@@ -1,4 +1,4 @@
-Add ocean photos website
+[Uploading Untitled1-1.html…]()
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -171,12 +171,16 @@ Add ocean photos website
             cursor: move;
             animation: float 15s infinite ease-in-out;
             z-index: 10;
+            /* 移除所有可能导致白底的样式 */
+            background: transparent !important;
         }
         
         .floating-photo img {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain; /* 改为contain以保持透明区域 */
+            background: transparent; /* 关键：设置透明背景 */
+            display: block; /* 防止图片底部有间隙 */
         }
         
         @keyframes float {
@@ -195,6 +199,19 @@ Add ocean photos website
             100% {
                 transform: translate(0, 0) rotate(0deg);
             }
+        }
+        
+        /* 添加一个检查透明度的样式 */
+        .transparency-checker {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            color: white;
+            font-size: 12px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px;
+            border-radius: 3px;
         }
     </style>
 </head>
@@ -215,6 +232,9 @@ Add ocean photos website
     
     <!-- 照片容器 -->
     <div class="photo-container" id="photo-container"></div>
+    
+    <!-- 透明检查提示 -->
+    <div class="transparency-checker">上传透明PNG图片</div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -239,7 +259,7 @@ Add ocean photos website
                     if (file) {
                         const reader = new FileReader();
                         reader.onload = function(event) {
-                            addFloatingPhoto(event.target.result);
+                            addFloatingPhoto(event.target.result, file.type);
                         };
                         reader.readAsDataURL(file);
                     }
@@ -248,15 +268,48 @@ Add ocean photos website
                 sidebar.classList.remove('open');
             });
             
-            function addFloatingPhoto(imageSrc) {
+            function addFloatingPhoto(imageSrc, fileType) {
                 const photoDiv = document.createElement('div');
                 photoDiv.className = 'floating-photo';
-                const img = document.createElement('img');
+                
+                // 创建图片容器
+                const imgContainer = document.createElement('div');
+                imgContainer.style.width = '100%';
+                imgContainer.style.height = '100%';
+                imgContainer.style.background = 'transparent';
+                imgContainer.style.overflow = 'hidden';
+                
+                const img = new Image();
+                img.onload = function() {
+                    // 检查图片是否透明
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // 检查左上角像素是否透明
+                    const pixelData = ctx.getImageData(0, 0, 1, 1).data;
+                    const isTransparent = pixelData[3] < 255; // alpha值小于255表示透明
+                    
+                    if (isTransparent) {
+                        console.log('透明图片已上传');
+                    }
+                };
+                
                 img.src = imageSrc;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'contain';
+                img.style.background = 'transparent';
+                img.style.display = 'block';
                 img.alt = '';
-                photoDiv.appendChild(img);
+                
+                imgContainer.appendChild(img);
+                photoDiv.appendChild(imgContainer);
                 photoContainer.appendChild(photoDiv);
                 
+                // 随机位置
                 const maxX = window.innerWidth - 150;
                 const maxY = window.innerHeight - 150;
                 const randomX = Math.floor(Math.random() * maxX);
@@ -265,6 +318,7 @@ Add ocean photos website
                 photoDiv.style.left = `${randomX}px`;
                 photoDiv.style.top = `${randomY}px`;
                 
+                // 随机动画
                 const randomDelay = Math.random() * 5;
                 const randomDuration = 10 + Math.random() * 10;
                 photoDiv.style.animationDelay = `${randomDelay}s`;
@@ -272,8 +326,18 @@ Add ocean photos website
                 
                 makeElementDraggable(photoDiv);
                 
+                // 双击删除
                 photoDiv.addEventListener('dblclick', function() {
                     photoContainer.removeChild(photoDiv);
+                });
+                
+                // 鼠标悬停显示删除提示
+                photoDiv.addEventListener('mouseenter', function() {
+                    this.style.boxShadow = '0 0 0 2px rgba(255,0,0,0.5)';
+                });
+                
+                photoDiv.addEventListener('mouseleave', function() {
+                    this.style.boxShadow = '';
                 });
             }
             
