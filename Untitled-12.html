@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>像素海洋照片漂流</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            background: #a8d8ff;
+            position: relative;
+        }
+        
+        /* 像素海洋背景 */
+        .ocean {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+            background: 
+                linear-gradient(45deg, #a8d8ff 25%, transparent 25%, transparent 75%, #a8d8ff 75%, #a8d8ff),
+                linear-gradient(45deg, #a8d8ff 25%, #8bcbff 25%, #8bcbff 75%, #a8d8ff 75%, #a8d8ff);
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
+            animation: wave 4s infinite linear;
+        }
+        
+        /* 像素波浪效果 */
+        .wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 200%;
+            height: 100px;
+            background: 
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 20px,
+                    rgba(255, 255, 255, 0.3) 20px,
+                    rgba(255, 255, 255, 0.3) 40px
+                );
+            animation: moveWave 6s infinite linear;
+            opacity: 0.6;
+        }
+        
+        .wave2 {
+            height: 80px;
+            animation: moveWave 8s infinite linear;
+            opacity: 0.4;
+            bottom: 20px;
+        }
+        
+        .wave3 {
+            height: 60px;
+            animation: moveWave 10s infinite linear;
+            opacity: 0.2;
+            bottom: 40px;
+        }
+        
+        @keyframes moveWave {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+        
+        @keyframes wave {
+            0%, 100% {
+                background-position: 0 0, 30px 30px;
+            }
+            50% {
+                background-position: 0 10px, 30px 40px;
+            }
+        }
+        
+        /* 侧边栏样式 */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            transition: left 0.3s ease;
+            z-index: 100;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .sidebar.open {
+            left: 0;
+        }
+        
+        .toggle-btn {
+            position: absolute;
+            top: 20px;
+            right: -50px;
+            width: 50px;
+            height: 50px;
+            background: #000;
+            border: none;
+            border-radius: 0 10px 10px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #fff;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            background: #000;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 0 2px #fff;
+        }
+        
+        .btn:hover {
+            background: #333;
+            transform: translateY(-2px);
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        /* 照片容器 */
+        .photo-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+        }
+        
+        .floating-photo {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            overflow: hidden;
+            pointer-events: auto;
+            cursor: move;
+            animation: float 15s infinite ease-in-out;
+            z-index: 10;
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+        }
+        
+        .floating-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+            25% {
+                transform: translate(20px, -15px) rotate(3deg);
+            }
+            50% {
+                transform: translate(-15px, 10px) rotate(-2deg);
+            }
+            75% {
+                transform: translate(10px, -5px) rotate(1deg);
+            }
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+        }
+        
+        /* 删除提示 */
+        .delete-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            z-index: 20;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 像素海洋背景 -->
+    <div class="ocean">
+        <div class="wave"></div>
+        <div class="wave wave2"></div>
+        <div class="wave wave3"></div>
+    </div>
+    
+    <!-- 侧边栏 -->
+    <div class="sidebar" id="sidebar">
+        <button class="toggle-btn" id="toggle-btn">☰</button>
+        <input type="file" id="file-input" accept="image/*">
+        <button class="btn" id="upload-btn">上传照片</button>
+    </div>
+    
+    <!-- 照片容器 -->
+    <div class="photo-container" id="photo-container"></div>
+    
+    <!-- 删除提示 -->
+    <div class="delete-hint">双击照片可删除</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('toggle-btn');
+            const fileInput = document.getElementById('file-input');
+            const uploadBtn = document.getElementById('upload-btn');
+            const photoContainer = document.getElementById('photo-container');
+            
+            // 切换侧边栏
+            toggleBtn.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+            });
+            
+            // 点击上传按钮触发文件选择
+            uploadBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            // 处理文件上传
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(event) {
+                        addFloatingPhoto(event.target.result);
+                    };
+                    
+                    reader.readAsDataURL(file);
+                }
+                
+                // 重置文件输入，允许再次选择同一文件
+                fileInput.value = '';
+                
+                // 自动关闭侧边栏
+                sidebar.classList.remove('open');
+            });
+            
+            // 添加漂浮照片
+            function addFloatingPhoto(imageSrc) {
+                const photoDiv = document.createElement('div');
+                photoDiv.className = 'floating-photo';
+                
+                const img = document.createElement('img');
+                img.src = imageSrc;
+                img.alt = '漂浮的照片';
+                
+                photoDiv.appendChild(img);
+                photoContainer.appendChild(photoDiv);
+                
+                // 随机位置
+                const maxX = window.innerWidth - 150;
+                const maxY = window.innerHeight - 150;
+                const randomX = Math.floor(Math.random() * maxX);
+                const randomY = Math.floor(Math.random() * maxY);
+                
+                photoDiv.style.left = `${randomX}px`;
+                photoDiv.style.top = `${randomY}px`;
+                
+                // 随机动画延迟和持续时间
+                const randomDelay = Math.random() * 5;
+                const randomDuration = 10 + Math.random() * 10;
+                
+                photoDiv.style.animationDelay = `${randomDelay}s`;
+                photoDiv.style.animationDuration = `${randomDuration}s`;
+                
+                // 添加拖拽功能
+                makeElementDraggable(photoDiv);
+                
+                // 添加双击删除功能
+                photoDiv.addEventListener('dblclick', function() {
+                    photoContainer.removeChild(photoDiv);
+                });
+            }
+            
+            // 使元素可拖拽
+            function makeElementDraggable(element) {
+                let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+                
+                element.onmousedown = dragMouseDown;
+                
+                function dragMouseDown(e) {
+                    e.preventDefault();
+                    // 获取鼠标初始位置
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+                    document.onmouseup = closeDragElement;
+                    document.onmousemove = elementDrag;
+                    
+                    // 暂停浮动动画
+                    element.style.animationPlayState = 'paused';
+                }
+                
+                function elementDrag(e) {
+                    e.preventDefault();
+                    // 计算新位置
+                    pos1 = pos3 - e.clientX;
+                    pos2 = pos4 - e.clientY;
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+                    
+                    // 设置元素新位置
+                    element.style.top = (element.offsetTop - pos2) + "px";
+                    element.style.left = (element.offsetLeft - pos1) + "px";
+                }
+                
+                function closeDragElement() {
+                    // 停止移动
+                    document.onmouseup = null;
+                    document.onmousemove = null;
+                    
+                    // 恢复浮动动画
+                    element.style.animationPlayState = 'running';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
